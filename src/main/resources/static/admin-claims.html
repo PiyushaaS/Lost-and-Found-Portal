@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a13">
+  <title>Claim review — Campus Find</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+  <header class="site-header"><nav class="nav-shell" aria-label="Main navigation">
+    <a class="brand" href="/"><span class="brand-mark"><i class="fa-solid fa-location-crosshairs"></i></span><span class="brand-name">Campus<span> Find</span></span></a>
+    <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Toggle navigation"><i class="fa-solid fa-bars"></i></button>
+    <div class="nav-links" data-nav-links><a class="nav-link" href="/">Discover</a><a class="nav-link active" href="/admin-claims.html">Claim review</a></div>
+    <div class="nav-actions"><span class="user-chip"><i class="fa-solid fa-user-shield"></i><span data-user-name>Admin</span></span><button class="btn btn-ghost btn-sm" type="button" data-logout>Sign out</button></div>
+  </nav></header>
+  <main class="page-shell">
+    <div class="toolbar">
+      <div><span class="eyebrow">Campus operations</span><h1 style="margin:10px 0;font-size:clamp(34px,5vw,48px)">Claim review</h1><p class="subtle" style="margin:0">Review ownership details and resolve pending requests.</p></div>
+      <button class="btn btn-ghost" type="button" id="refreshClaims"><i class="fa-solid fa-rotate"></i> Refresh queue</button>
+    </div>
+    <section class="surface panel">
+      <div class="section-heading"><div><h2 style="margin:0;font-size:22px">Pending claims</h2><p class="subtle" style="margin:7px 0 0">Proof images are opened only when requested.</p></div><span class="badge badge-pending" id="pendingBadge">Loading</span></div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Claim</th><th>Item details</th><th>Claimant &amp; proof</th><th>Review</th></tr></thead>
+          <tbody id="claimRows"><tr><td colspan="4" class="subtle">Loading the review queue…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="adminMessage" aria-live="polite"></div>
+    </section>
+    <footer class="footer"><span>Campus Find · Admin review</span><span><a href="/">Back to discover</a></span></footer>
+  </main>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="/js/portal.js"></script>
+  <script>
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    const tbody = document.getElementById("claimRows");
+    const escapeHtml = Portal.escapeHtml;
+
+    async function loadClaims() {
+      tbody.innerHTML = '<tr><td colspan="4" class="subtle">Loading the review queue…</td></tr>';
+      try {
+        const response = await fetch("/api/claims/pending", { headers: { Authorization: `Bearer ${token}` } });
+        if (response.status === 401 || response.status === 403) {
+          localStorage.clear();
+          window.location.replace("/login.html");
+          return;
+        }
+        if (!response.ok) throw new Error("The pending claim queue could not be loaded.");
+        const claims = await response.json();
+        if (!Array.isArray(claims)) throw new Error("The claims service returned an unexpected response.");
+        document.getElementById("pendingBadge").textContent = `${claims.length} pending`;
+        if (!claims.length) {
+          tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-check"></i></div><h3>All caught up</h3><p>There are no pending claims to review.</p></div></td></tr>';
+          return;
+        }
+        tbody.innerHTML = claims.map((claim) => {
+          const item = claim.itemPost || {};
+          const proofButtons = `<button class="btn btn-ghost btn-sm" type="button" data-proof="gov" data-id="${escapeHtml(claim.id)}"><i class="fa-regular fa-id-card"></i> Identity</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-proof="product" data-id="${escapeHtml(claim.id)}"><i class="fa-solid fa-box"></i> Item proof</button>`;
+          return `<tr>
+            <td><span class="badge badge-pending">#${escapeHtml(claim.id)}</span><br><small>${escapeHtml(claim.createdAt || "")}</small></td>
+            <td><strong>${escapeHtml(item.title || "Reported item")}</strong><br><small>${escapeHtml(item.description || "No description")}</small><br><small><i class="fa-solid fa-location-dot"></i> ${escapeHtml(item.location || "Location not specified")} · ${escapeHtml(item.dateEvent || "Date not specified")}</small></td>
+            <td><strong>${escapeHtml(claim.fullName || "Claimant")}</strong> · ${escapeHtml(claim.age ?? "—")}<br><small>${escapeHtml(claim.mobile || "No mobile provided")}</small><br><small>${escapeHtml(claim.proofType || "Proof type not provided")}</small><p style="max-width:280px;margin:8px 0;overflow-wrap:anywhere">${escapeHtml(claim.reason || "")}</p><div class="table-actions">${proofButtons}</div></td>
+            <td><div class="table-actions"><button class="btn btn-success btn-sm" type="button" data-resolve="APPROVED" data-id="${escapeHtml(claim.id)}"><i class="fa-solid fa-check"></i> Approve</button><button class="btn btn-danger btn-sm" type="button" data-resolve="REJECTED" data-id="${escapeHtml(claim.id)}"><i class="fa-solid fa-xmark"></i> Reject</button></div></td>
+          </tr>`;
+        }).join("");
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h3>Unable to load the review queue</h3><p>${escapeHtml(error.message)}</p></div></td></tr>`;
+        Portal.toast(error.message, "error");
+      }
+    }
+
+    async function openProof(type, id, trigger) {
+      const proofWindow = window.open("about:blank", "_blank");
+      if (!proofWindow) {
+        Portal.toast("Allow pop-ups to view the verification image.", "error");
+        return;
+      }
+      proofWindow.opener = null;
+      trigger.disabled = true;
+      try {
+        const response = await fetch(`/api/claims/proof/${type}/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) throw new Error("Unable to load this proof image.");
+        const url = URL.createObjectURL(await response.blob());
+        proofWindow.location.replace(url);
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch (error) {
+        proofWindow.close();
+        Portal.toast(error.message, "error");
+      } finally {
+        trigger.disabled = false;
+      }
+    }
+
+    async function resolveClaim(id, status, trigger) {
+      trigger.disabled = true;
+      try {
+        const response = await fetch(`/api/claims/${encodeURIComponent(id)}/resolve?status=${encodeURIComponent(status)}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          const details = await response.text();
+          throw new Error(details || `Unable to ${status.toLowerCase()} the claim.`);
+        }
+        Portal.toast(`Claim ${status.toLowerCase()}.`, "success");
+        await loadClaims();
+      } catch (error) {
+        Portal.toast(error.message, "error");
+        trigger.disabled = false;
+      }
+    }
+
+    tbody.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      if (button.dataset.proof) openProof(button.dataset.proof, button.dataset.id, button);
+      if (button.dataset.resolve) resolveClaim(button.dataset.id, button.dataset.resolve, button);
+    });
+    document.getElementById("refreshClaims").addEventListener("click", loadClaims);
+
+    if (!token || role !== "ADMIN") {
+      window.location.replace("/login.html");
+    } else {
+      loadClaims();
+    }
+  </script>
+</body>
+</html>

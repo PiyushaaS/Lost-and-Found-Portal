@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a13">
+  <title>Item details — Campus Find</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="brand" href="/"><span class="brand-mark"><i class="fa-solid fa-location-crosshairs"></i></span><span class="brand-name">Campus<span> Find</span></span></a>
+      <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Toggle navigation"><i class="fa-solid fa-bars"></i></button>
+      <div class="nav-links" data-nav-links>
+        <a class="nav-link" href="/">Discover</a>
+        <a class="nav-link" href="/#browse">Browse items</a>
+        <a class="nav-link" href="/my-claims.html" data-auth-only hidden>My claims</a>
+        <a class="nav-link" href="/admin-claims.html" data-admin-only hidden>Admin</a>
+      </div>
+      <div class="nav-actions"><span class="user-chip"><i class="fa-regular fa-circle-user"></i><span data-user-name>Guest</span></span><a class="btn btn-ghost btn-sm" href="/login.html" data-guest-only hidden>Sign in</a><button class="btn btn-ghost btn-sm" type="button" data-logout data-auth-only hidden>Sign out</button></div>
+    </nav>
+  </header>
+  <main class="page-shell">
+    <a class="btn btn-ghost btn-sm" href="/"><i class="fa-solid fa-arrow-left"></i> Back to listings</a>
+    <section class="surface detail-layout enter" style="margin-top:18px">
+      <div id="itemImage" class="detail-image"><div class="loading-dots" aria-label="Loading item"><span></span><span></span><span></span></div></div>
+      <div class="detail-copy">
+        <span id="itemType" class="badge">Loading</span>
+        <h1 id="itemTitle">Loading item…</h1>
+        <p id="itemDescription" class="lead"></p>
+        <dl class="detail-meta">
+          <div><dt>Location</dt><dd id="itemLocation">—</dd></div>
+          <div><dt>Category</dt><dd id="itemCategory">—</dd></div>
+          <div><dt>Reported date</dt><dd id="itemDate">—</dd></div>
+          <div><dt>Listing status</dt><dd id="itemStatus">—</dd></div>
+          <div><dt>Contact number</dt><dd id="itemMobile">—</dd></div>
+        </dl>
+        <div id="claimArea"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="claimModal" class="modal-backdrop" role="presentation">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="claimTitle">
+      <div class="modal-header">
+        <div><span class="eyebrow">Ownership verification</span><h2 id="claimTitle">Submit a claim</h2><p class="subtle" style="margin:0">Share a few details so the campus team can verify it’s yours.</p></div>
+        <button class="modal-close" type="button" data-close-modal aria-label="Close claim form"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="claimForm">
+        <div class="form-grid">
+          <div class="field"><label for="fullName">Full name</label><input class="control" id="fullName" name="fullName" autocomplete="name" required maxlength="120"></div>
+          <div class="field"><label for="age">Age</label><input class="control" id="age" name="age" type="number" min="1" max="120" required></div>
+          <div class="field"><label for="claimMobile">Mobile number</label><input class="control" id="claimMobile" name="mobile" type="tel" autocomplete="tel" required maxlength="30"></div>
+          <div class="field"><label for="proofType">Proof type</label><select class="control" id="proofType" name="govProofName" required><option value="">Select proof</option><option>Aadhaar Card</option><option>Driving License</option><option>College ID</option><option>Purchase Bill</option><option>Other Proof</option></select></div>
+          <div class="field field-wide"><label for="reason">Why is this item yours?</label><textarea class="control" id="reason" name="reason" rows="3" maxlength="1000" required placeholder="Describe a detail that can help confirm ownership."></textarea></div>
+          <div class="field field-wide"><label for="govProofImage">Identity proof image</label><input class="control" id="govProofImage" name="govProofImage" type="file" accept="image/*" required><span class="help-text">Only the reviewing campus team should access your verification images.</span></div>
+          <div class="field field-wide"><label for="productProofImage">Product proof image</label><input class="control" id="productProofImage" name="productProofImage" type="file" accept="image/*" required></div>
+        </div>
+        <div id="claimMessage" aria-live="polite"></div>
+        <div class="modal-footer"><button class="btn btn-ghost" type="button" data-close-modal>Cancel</button><button class="btn btn-primary" id="claimSubmit" type="submit"><i class="fa-solid fa-paper-plane"></i> Send claim</button></div>
+      </form>
+    </section>
+  </div>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="/js/portal.js"></script>
+  <script>
+    const token = localStorage.getItem("token");
+    const params = new URLSearchParams(window.location.search);
+    const itemId = params.get("id");
+    const modal = document.getElementById("claimModal");
+
+    function openClaimModal() {
+      modal.classList.add("open");
+      document.getElementById("fullName").focus();
+    }
+    function closeClaimModal() {
+      modal.classList.remove("open");
+    }
+    document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeClaimModal));
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeClaimModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeClaimModal();
+    });
+
+    async function loadItem() {
+      if (!itemId) {
+        window.location.replace("/");
+        return;
+      }
+      if (!token) {
+        const returnTo = encodeURIComponent(`/item.html?id=${itemId}`);
+        window.location.replace(`/login.html?returnTo=${returnTo}`);
+        return;
+      }
+      try {
+        const response = await fetch(`/api/items/${encodeURIComponent(itemId)}`);
+        if (!response.ok) throw new Error(response.status === 404 ? "This listing could not be found." : "Unable to load this listing.");
+        const item = await response.json();
+        document.title = `${item.title || "Item details"} — Campus Find`;
+        document.getElementById("itemTitle").textContent = item.title || "Untitled item";
+        document.getElementById("itemDescription").textContent = item.description || "No description was provided.";
+        document.getElementById("itemLocation").textContent = item.location || "Not specified";
+        document.getElementById("itemCategory").textContent = item.category || "Not specified";
+        document.getElementById("itemDate").textContent = item.dateEvent || "Not specified";
+        document.getElementById("itemStatus").textContent = item.status || "Unknown";
+        document.getElementById("itemMobile").textContent = item.mobile || "Not specified";
+        const badge = document.getElementById("itemType");
+        badge.textContent = item.lost ? "Lost item" : "Found item";
+        badge.classList.add(item.lost ? "badge-lost" : "badge-found");
+        document.getElementById("itemImage").innerHTML = item.photo
+          ? `<img src="/api/items/photo/${encodeURIComponent(item.id)}" alt="${Portal.escapeHtml(item.title || "Reported item")}" loading="lazy">`
+          : '<span class="placeholder-icon"><i class="fa-regular fa-image"></i> Photo not provided</span>';
+
+        const area = document.getElementById("claimArea");
+        if (item.lost) {
+          area.innerHTML = '<p class="subtle"><i class="fa-regular fa-clock"></i> This is a lost-item report. The finder can contact the reporter directly.</p>';
+        } else if (item.status === "RETURNED") {
+          area.innerHTML = '<span class="badge status-approved"><i class="fa-solid fa-circle-check"></i> This item has been returned</span>';
+        } else {
+          area.innerHTML = '<button class="btn btn-primary" id="openClaim" type="button"><i class="fa-solid fa-hand-holding-heart"></i> Claim this item</button><p class="help-text" style="margin-top:10px">You’ll need identity and item proof images to submit a claim.</p>';
+          document.getElementById("openClaim").addEventListener("click", openClaimModal);
+        }
+      } catch (error) {
+        document.getElementById("itemTitle").textContent = "Listing unavailable";
+        document.getElementById("itemDescription").textContent = error.message;
+        Portal.toast(error.message, "error");
+      }
+    }
+
+    document.getElementById("claimForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+      const submit = document.getElementById("claimSubmit");
+      const message = document.getElementById("claimMessage");
+      submit.disabled = true;
+      submit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending claim…';
+      message.textContent = "";
+      try {
+        const formData = new FormData(form);
+        const response = await fetch(`/api/claims/${encodeURIComponent(itemId)}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        if (!response.ok) {
+          const details = await response.text();
+          throw new Error(details || "Your claim could not be submitted.");
+        }
+        Portal.toast("Your claim was submitted for review.", "success");
+        closeClaimModal();
+        form.reset();
+        document.getElementById("claimArea").innerHTML = '<span class="badge badge-pending"><i class="fa-regular fa-clock"></i> Claim submitted · awaiting review</span><p class="subtle" style="margin-top:12px"><a href="/my-claims.html">Track your claim status</a></p>';
+      } catch (error) {
+        message.className = "message error";
+        message.textContent = error.message;
+      } finally {
+        submit.disabled = false;
+        submit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send claim';
+      }
+    });
+
+    loadItem();
+  </script>
+</body>
+</html>

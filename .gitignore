@@ -1,0 +1,11 @@
+target/
+.env
+.env.*
+!.env.example
+application-local.properties
+*.sql
+*.sql.gz
+*.bak
+*.log
+.idea/
+.vscode/

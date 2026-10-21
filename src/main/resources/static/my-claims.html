@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a13">
+  <title>My claims — Campus Find</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+  <header class="site-header"><nav class="nav-shell" aria-label="Main navigation">
+    <a class="brand" href="/"><span class="brand-mark"><i class="fa-solid fa-location-crosshairs"></i></span><span class="brand-name">Campus<span> Find</span></span></a>
+    <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Toggle navigation"><i class="fa-solid fa-bars"></i></button>
+    <div class="nav-links" data-nav-links><a class="nav-link" href="/">Discover</a><a class="nav-link" href="/#browse">Browse items</a><a class="nav-link active" href="/my-claims.html">My claims</a></div>
+    <div class="nav-actions"><span class="user-chip"><i class="fa-regular fa-circle-user"></i><span data-user-name>Guest</span></span><button class="btn btn-ghost btn-sm" type="button" data-logout>Sign out</button></div>
+  </nav></header>
+  <main class="page-shell">
+    <div class="section-heading">
+      <div><span class="eyebrow">Your activity</span><h1 style="margin:10px 0;font-size:clamp(34px,5vw,48px)">My claims</h1><p class="subtle" style="margin:0">Follow each request from review to resolution.</p></div>
+      <a class="btn btn-ghost" href="/#browse"><i class="fa-solid fa-magnifying-glass"></i> Find an item</a>
+    </div>
+    <section class="claims-grid" aria-label="Claim status summary">
+      <div class="surface claim-stat"><span>Pending review</span><strong id="pendingCount">—</strong></div>
+      <div class="surface claim-stat"><span>Approved</span><strong id="approvedCount">—</strong></div>
+      <div class="surface claim-stat"><span>Not approved</span><strong id="rejectedCount">—</strong></div>
+    </section>
+    <section id="claimsList" class="claims-list" aria-live="polite">
+      <div class="surface state-panel"><div class="loading-dots" aria-label="Loading claims"><span></span><span></span><span></span></div><p class="subtle">Loading your claim history…</p></div>
+    </section>
+    <footer class="footer"><span>Campus Find · A more helpful campus, together.</span><span><a href="/">Back to discover</a></span></footer>
+  </main>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="/js/portal.js"></script>
+  <script>
+    const token = localStorage.getItem("token");
+    const list = document.getElementById("claimsList");
+    const escapeHtml = Portal.escapeHtml;
+    if (!token) window.location.replace("/login.html");
+
+    function statusClass(status) {
+      const value = String(status || "").toUpperCase();
+      if (value === "APPROVED") return "status-approved";
+      if (value === "REJECTED") return "status-rejected";
+      return "badge-pending";
+    }
+    function formatDate(value) {
+      if (!value) return "Date unavailable";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? escapeHtml(value) : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+    }
+    async function loadClaims() {
+      if (!token) return;
+      try {
+        const response = await fetch("/api/claims/my", { headers: { Authorization: `Bearer ${token}` } });
+        if (response.status === 401 || response.status === 403) {
+          localStorage.clear();
+          window.location.replace("/login.html");
+          return;
+        }
+        if (!response.ok) throw new Error("Your claims could not be loaded. Please try again.");
+        const claims = await response.json();
+        if (!Array.isArray(claims)) throw new Error("The claims service returned an unexpected response.");
+        const normalized = claims.map((claim) => String(claim.status || "").toUpperCase());
+        document.getElementById("pendingCount").textContent = String(normalized.filter((status) => status === "PENDING").length);
+        document.getElementById("approvedCount").textContent = String(normalized.filter((status) => status === "APPROVED").length);
+        document.getElementById("rejectedCount").textContent = String(normalized.filter((status) => status === "REJECTED").length);
+        if (claims.length === 0) {
+          list.innerHTML = '<div class="surface empty-state"><div class="empty-icon"><i class="fa-regular fa-folder-open"></i></div><h3>No claims just yet</h3><p>When you submit a claim for a found item, its progress will appear here.</p><a class="btn btn-primary" style="margin-top:18px" href="/#browse">Browse found items</a></div>';
+          return;
+        }
+        list.innerHTML = claims.map((claim) => {
+          const item = claim.itemPost || {};
+          const status = String(claim.status || "PENDING").toUpperCase();
+          return `<article class="surface claim-row">
+            <div><h3>${escapeHtml(item.title || "Reported item")}</h3>
+              <div class="metadata"><span><i class="fa-solid fa-location-dot"></i>${escapeHtml(item.location || "Location not specified")}</span><span><i class="fa-regular fa-calendar"></i>Submitted ${formatDate(claim.createdAt)}</span></div>
+              <p class="subtle" style="margin:10px 0 0;font-size:12px">${status === "PENDING" ? "The campus team is reviewing your claim. Check back for an update." : status === "APPROVED" ? "Your claim was approved. Please coordinate with the campus team to collect your item." : status === "REJECTED" ? "This claim was not approved. Contact the campus team if you need more information." : "Your claim status has been updated."}</p>
+            </div>
+            <span class="badge ${statusClass(status)}">${escapeHtml(status)}</span>
+          </article>`;
+        }).join("");
+      } catch (error) {
+        list.innerHTML = `<div class="surface empty-state"><div class="empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h3>Unable to load your claims</h3><p>${escapeHtml(error.message)}</p><button class="btn btn-ghost" style="margin-top:18px" type="button" onclick="loadClaims()">Try again</button></div>`;
+        Portal.toast(error.message, "error");
+      }
+    }
+    loadClaims();
+  </script>
+</body>
+</html>

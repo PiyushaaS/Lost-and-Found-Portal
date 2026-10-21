@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a13">
+  <meta name="description" content="A thoughtful campus lost and found. Report an item, browse found belongings, and help reunite people with what matters.">
+  <title>Campus Find — Lost &amp; Found</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/index.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="brand" href="/" aria-label="Campus Find home">
+        <span class="brand-mark"><i class="fa-solid fa-location-crosshairs"></i></span>
+        <span class="brand-name">Campus<span> Find</span></span>
+      </a>
+      <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Toggle navigation"><i class="fa-solid fa-bars"></i></button>
+      <div class="nav-links" data-nav-links>
+        <a class="nav-link active" href="/">Discover</a>
+        <a class="nav-link" href="#browse">Browse items</a>
+        <a class="nav-link" href="/post.html?lost=false">Report found</a>
+        <a class="nav-link" href="/post.html?lost=true">Report lost</a>
+        <a class="nav-link" href="/my-claims.html" data-auth-only hidden>My claims</a>
+        <a class="nav-link" href="/admin-claims.html" data-admin-only hidden>Admin</a>
+      </div>
+      <div class="nav-actions">
+        <span class="user-chip"><i class="fa-regular fa-circle-user"></i><span data-user-name>Guest</span></span>
+        <a class="btn btn-ghost btn-sm" href="/login.html" data-guest-only hidden>Sign in <i class="fa-solid fa-arrow-right"></i></a>
+        <button class="btn btn-ghost btn-sm" type="button" data-logout data-auth-only hidden>Sign out</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero enter">
+      <div class="hero-copy">
+        <span class="eyebrow">A little help goes a long way</span>
+        <h1>Lost something?<br><span class="gradient-text">Let’s bring it home.</span></h1>
+        <p>Your campus community is looking out for you. Search recent reports, share what you’ve found, and make the next reunion happen.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#browse">Explore found items <i class="fa-solid fa-arrow-down"></i></a>
+          <a class="btn btn-ghost" href="/post.html?lost=true"><i class="fa-solid fa-plus"></i> Report something lost</a>
+        </div>
+        <div class="hero-footnote"><i class="fa-solid fa-shield-halved"></i> Claims are reviewed securely by your campus team.</div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="orbital">
+          <div class="orbital-core"><i class="fa-solid fa-magnifying-glass-location"></i></div>
+          <div class="float-tag one"><i class="fa-solid fa-key"></i> Keys reunited</div>
+          <div class="float-tag two"><i class="fa-solid fa-heart"></i> Community powered</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-row enter-delay" aria-label="Live listings overview">
+      <div class="stat-card"><span class="stat-number" id="itemsCount">—</span><span class="stat-label">Items in view</span></div>
+      <div class="stat-card"><span class="stat-number" id="foundCount">—</span><span class="stat-label">Found items</span></div>
+      <div class="stat-card"><span class="stat-number" id="lostCount">—</span><span class="stat-label">Lost reports</span></div>
+    </section>
+
+    <section id="browse" aria-labelledby="browseTitle">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">The community board</span>
+          <h2 id="browseTitle">Recently reported</h2>
+          <p class="subtle" style="margin:8px 0 0">Find a match or help someone else find theirs.</p>
+        </div>
+        <a class="btn btn-ghost" href="/post.html?lost=false"><i class="fa-solid fa-plus"></i> Post a found item</a>
+      </div>
+      <form class="panel filter-panel" id="filterForm">
+        <div class="field">
+          <label for="searchInput">Search items</label>
+          <input id="searchInput" class="control" type="search" placeholder="Try “blue backpack”">
+        </div>
+        <div class="field">
+          <label for="locationFilter">Location</label>
+          <input id="locationFilter" class="control" type="search" placeholder="Building or area">
+        </div>
+        <div class="field">
+          <label for="categoryFilter">Category</label>
+          <select id="categoryFilter" class="control"><option value="">All categories</option></select>
+        </div>
+        <div class="field">
+          <label for="typeFilter">Listing type</label>
+          <select id="typeFilter" class="control">
+            <option value="">All listings</option>
+            <option value="false">Found items</option>
+            <option value="true">Lost reports</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-sliders"></i> Find items</button>
+      </form>
+      <div id="items" class="item-grid" aria-live="polite">
+        <div class="panel state-panel" style="grid-column:1/-1">
+          <div class="loading-dots" aria-label="Loading items"><span></span><span></span><span></span></div>
+          <p class="subtle">Loading the latest community reports…</p>
+        </div>
+      </div>
+    </section>
+    <footer class="footer"><span>Campus Find · A more helpful campus, together.</span><span>Have something? <a href="/post.html?lost=false">Share a found item</a></span></footer>
+  </main>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="/js/portal.js"></script>
+  <script>
+    const escapeHtml = Portal.escapeHtml;
+    const itemGrid = document.getElementById("items");
+    let knownCategories = [];
+
+    function updateCategories(items) {
+      knownCategories = [...new Set([...knownCategories, ...items.map((item) => item.category).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+      const select = document.getElementById("categoryFilter");
+      const current = select.value;
+      select.innerHTML = '<option value="">All categories</option>' + knownCategories.map((category) =>
+        `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("");
+      select.value = current;
+    }
+
+    function itemCard(item) {
+      const id = encodeURIComponent(item.id);
+      const lost = Boolean(item.lost);
+      const image = item.photo
+        ? `<img src="/api/items/photo/${id}" alt="${escapeHtml(item.title)}" loading="lazy">`
+        : '<span class="placeholder-icon"><i class="fa-regular fa-image"></i></span>';
+      const description = item.description || "No description provided.";
+      const claimAction = lost
+        ? '<span class="help-text">Waiting for a finder</span>'
+        : localStorage.getItem("token")
+          ? `<a class="btn btn-primary btn-sm" href="/item.html?id=${id}">View &amp; claim</a>`
+          : `<a class="btn btn-primary btn-sm" href="/login.html?returnTo=${encodeURIComponent(`/item.html?id=${id}`)}">Sign in to claim</a>`;
+      return `<article class="surface item-card">
+        <a class="item-image" href="/item.html?id=${id}" aria-label="View ${escapeHtml(item.title)}">${image}</a>
+        <div class="item-card-body">
+          <div class="item-card-top"><h3 title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</h3><span class="badge ${lost ? "badge-lost" : "badge-found"}">${lost ? "Lost" : "Found"}</span></div>
+          <p class="item-description">${escapeHtml(description)}</p>
+          <div class="metadata">
+            <span><i class="fa-solid fa-location-dot"></i>${escapeHtml(item.location || "Location not specified")}</span>
+            <span><i class="fa-regular fa-calendar"></i>${escapeHtml(item.dateEvent || "Date not specified")}</span>
+          </div>
+          <div class="card-actions"><a class="btn btn-ghost btn-sm" href="/item.html?id=${id}">Details</a>${claimAction}</div>
+        </div>
+      </article>`;
+    }
+
+    async function loadItems(event) {
+      if (event) event.preventDefault();
+      itemGrid.innerHTML = '<div class="panel state-panel" style="grid-column:1/-1"><div class="loading-dots" aria-label="Loading items"><span></span><span></span><span></span></div><p class="subtle">Searching reports…</p></div>';
+      const params = new URLSearchParams({ page: "0", size: "100" });
+      const query = document.getElementById("searchInput").value.trim();
+      const location = document.getElementById("locationFilter").value.trim();
+      const category = document.getElementById("categoryFilter").value;
+      const lost = document.getElementById("typeFilter").value;
+      if (query) params.set("q", query);
+      if (location) params.set("location", location);
+      if (category) params.set("category", category);
+      if (lost !== "") params.set("isLost", lost);
+      try {
+        const response = await fetch(`/api/items?${params}`);
+        if (!response.ok) throw new Error("The item list could not be loaded.");
+        const items = await response.json();
+        if (!Array.isArray(items)) throw new Error("The item service returned an unexpected response.");
+        updateCategories(items);
+        document.getElementById("itemsCount").textContent = String(items.length);
+        document.getElementById("foundCount").textContent = String(items.filter((item) => !item.lost).length);
+        document.getElementById("lostCount").textContent = String(items.filter((item) => item.lost).length);
+        itemGrid.innerHTML = items.length
+          ? items.map(itemCard).join("")
+          : '<div class="surface empty-state" style="grid-column:1/-1"><div class="empty-icon"><i class="fa-solid fa-magnifying-glass"></i></div><h3>No matching reports</h3><p>Try a different keyword or filter, or share a report with the community.</p><a class="btn btn-ghost" style="margin-top:18px" href="/post.html?lost=true">Report a lost item</a></div>';
+      } catch (error) {
+        itemGrid.innerHTML = `<div class="surface empty-state" style="grid-column:1/-1"><div class="empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h3>We couldn’t load reports</h3><p>${escapeHtml(error.message)} Please try again.</p><button class="btn btn-ghost" style="margin-top:18px" type="button" onclick="loadItems()">Retry</button></div>`;
+        Portal.toast(error.message, "error");
+      }
+    }
+
+    document.getElementById("filterForm").addEventListener("submit", loadItems);
+    document.getElementById("typeFilter").addEventListener("change", loadItems);
+    document.getElementById("categoryFilter").addEventListener("change", loadItems);
+    loadItems();
+  </script>
+</body>
+</html>

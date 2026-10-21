@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a13">
+  <title>Report an item — Campus Find</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/report.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="brand" href="/"><span class="brand-mark"><i class="fa-solid fa-location-crosshairs"></i></span><span class="brand-name">Campus<span> Find</span></span></a>
+      <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Toggle navigation"><i class="fa-solid fa-bars"></i></button>
+      <div class="nav-links" data-nav-links>
+        <a class="nav-link" href="/">Discover</a>
+        <a class="nav-link" href="/#browse">Browse items</a>
+        <a class="nav-link" href="/my-claims.html" data-auth-only hidden>My claims</a>
+      </div>
+      <div class="nav-actions"><span class="user-chip"><i class="fa-regular fa-circle-user"></i><span data-user-name>Guest</span></span><a class="btn btn-ghost btn-sm" href="/login.html" data-guest-only hidden>Sign in</a><button class="btn btn-ghost btn-sm" type="button" data-logout data-auth-only hidden>Sign out</button></div>
+    </nav>
+  </header>
+  <main class="page-shell">
+    <div style="margin-bottom:24px"><span class="eyebrow">Make the connection</span><h1 style="margin:12px 0;font-size:clamp(34px,5vw,51px)">A few details can<br><span class="gradient-text">make someone’s day.</span></h1><p class="subtle">Share a clear report so the right person can recognize their item.</p></div>
+    <div class="form-layout">
+      <section class="surface form-card">
+        <form id="postForm" enctype="multipart/form-data">
+          <div class="form-grid">
+            <div class="field field-wide"><label for="title">Item name <span aria-hidden="true">*</span></label><input id="title" class="control" name="title" required maxlength="180" placeholder="e.g. Navy blue water bottle"></div>
+            <div class="field field-wide"><label for="description">Description</label><textarea id="description" class="control" name="description" maxlength="2000" placeholder="Color, brand, distinctive marks, or other helpful details"></textarea></div>
+            <div class="field"><label for="location">Where was it lost or found?</label><input id="location" class="control" name="location" maxlength="180" placeholder="Library, building, room…"></div>
+            <div class="field"><label for="category">Category <span aria-hidden="true">*</span></label><input id="category" class="control" name="category" required maxlength="80" placeholder="Electronics, clothing…"></div>
+            <div class="field"><label for="mobile">Contact mobile <span aria-hidden="true">*</span></label><input id="mobile" class="control" name="mobile" type="tel" required maxlength="30" autocomplete="tel" placeholder="A number the owner can reach"></div>
+            <div class="field"><label for="dateEvent">Date of event <span aria-hidden="true">*</span></label><input id="dateEvent" class="control" name="dateEvent" type="date" required></div>
+            <div class="field field-wide"><label for="lost">What are you reporting? <span aria-hidden="true">*</span></label><select id="lost" class="control" name="lost" required><option value="true">I lost an item</option><option value="false">I found an item</option></select><span id="authNote" class="help-text"></span></div>
+            <div class="field field-wide"><label for="photo">Add a photo <span class="muted">(optional)</span></label><input id="photo" class="control" name="photo" type="file" accept="image/*"><span class="help-text">A photo helps people identify the item faster.</span></div>
+          </div>
+          <div id="postMessage" aria-live="polite"></div>
+          <div class="form-actions"><a class="btn btn-ghost" href="/">Cancel</a><button id="postSubmit" class="btn btn-primary" type="submit"><i class="fa-solid fa-paper-plane"></i> Submit report</button></div>
+        </form>
+      </section>
+      <aside class="surface info-card">
+        <h3><i class="fa-regular fa-lightbulb" style="color:var(--cyan);margin-right:8px"></i>Help your report get noticed</h3>
+        <ul class="info-list">
+          <li><i class="fa-solid fa-check"></i><span>Use a specific item name and mention distinctive details.</span></li>
+          <li><i class="fa-solid fa-check"></i><span>Add the closest building or area and the date it happened.</span></li>
+          <li><i class="fa-solid fa-check"></i><span>Lost-item reports require an account. Found-item reports can be submitted by anyone.</span></li>
+        </ul>
+        <div class="message" style="color:#a7afd0"><i class="fa-solid fa-shield-halved" style="color:var(--violet-bright)"></i> Please avoid posting sensitive personal details in the description.</div>
+      </aside>
+    </div>
+    <footer class="footer"><span>Campus Find · A more helpful campus, together.</span><span><a href="/#browse">Back to listings</a></span></footer>
+  </main>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="/js/portal.js"></script>
+  <script>
+    const token = localStorage.getItem("token");
+    const form = document.getElementById("postForm");
+    const lostSelect = document.getElementById("lost");
+    const message = document.getElementById("postMessage");
+    const requestedType = new URLSearchParams(window.location.search).get("lost");
+    if (requestedType === "false" || requestedType === "true") lostSelect.value = requestedType;
+
+    function updateAuthNote() {
+      const lost = lostSelect.value === "true";
+      document.getElementById("authNote").textContent = lost && !token
+        ? "Sign in is required before you can submit a lost-item report."
+        : lost ? "Your lost-item report will be posted to the community." : "Found-item reports can be shared without signing in.";
+    }
+    lostSelect.addEventListener("change", updateAuthNote);
+    updateAuthNote();
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const isLost = lostSelect.value === "true";
+      if (isLost && !token) {
+        const returnTo = encodeURIComponent(`${window.location.pathname}?lost=true`);
+        window.location.assign(`/login.html?returnTo=${returnTo}`);
+        return;
+      }
+      const submit = document.getElementById("postSubmit");
+      submit.disabled = true;
+      submit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting…';
+      message.textContent = "";
+      const headers = isLost ? { Authorization: `Bearer ${token}` } : {};
+      try {
+        const response = await fetch("/api/items", { method: "POST", headers, body: new FormData(form) });
+        if (!response.ok) {
+          const details = await response.text();
+          throw new Error(details || "Your report could not be submitted.");
+        }
+        message.className = "message success";
+        message.textContent = "Your report has been posted. Thank you for helping your campus community.";
+        Portal.toast("Item report submitted successfully.", "success");
+        form.reset();
+        lostSelect.value = isLost ? "true" : "false";
+        updateAuthNote();
+      } catch (error) {
+        message.className = "message error";
+        message.textContent = error.message;
+      } finally {
+        submit.disabled = false;
+        submit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit report';
+      }
+    });
+  </script>
+</body>
+</html>

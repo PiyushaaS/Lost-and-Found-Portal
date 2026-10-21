@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a13">
+  <title>Sign in — Campus Find</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="brand" href="/"><span class="brand-mark"><i class="fa-solid fa-location-crosshairs"></i></span><span class="brand-name">Campus<span> Find</span></span></a>
+      <a class="btn btn-ghost btn-sm" href="/"><i class="fa-solid fa-arrow-left"></i> Back home</a>
+    </nav>
+  </header>
+  <main class="page-shell auth-shell">
+    <section class="auth-intro enter">
+      <span class="eyebrow">Good to see you again</span>
+      <h1>Every lost item<br>has a <span class="gradient-text">way back.</span></h1>
+      <p>Sign in to submit a lost-item report, follow your claims, and stay connected to your campus community.</p>
+      <div class="auth-perks"><span><i class="fa-solid fa-circle-check"></i> Track claims from one place</span><span><i class="fa-solid fa-circle-check"></i> Get updates from the campus team</span><span><i class="fa-solid fa-circle-check"></i> Help make reunions happen</span></div>
+    </section>
+    <section class="surface auth-card enter-delay">
+      <span class="eyebrow">Member access</span>
+      <h2>Welcome back</h2>
+      <p>Use your Campus Find account to continue.</p>
+      <form id="loginForm" class="auth-form">
+        <div class="field"><label for="username">Username</label><input class="control" id="username" name="username" autocomplete="username" required placeholder="Your username"></div>
+        <div class="field"><label for="password">Password</label><input class="control" id="password" name="password" type="password" autocomplete="current-password" required placeholder="Your password"></div>
+        <div id="authMessage" aria-live="polite"></div>
+        <button class="btn btn-primary btn-block" id="loginSubmit" type="submit">Sign in securely <i class="fa-solid fa-arrow-right"></i></button>
+      </form>
+      <p class="auth-switch">New to Campus Find? <a href="/register.html">Create an account</a></p>
+    </section>
+  </main>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="/js/portal.js"></script>
+  <script>
+    const form = document.getElementById("loginForm");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const submit = document.getElementById("loginSubmit");
+      const message = document.getElementById("authMessage");
+      submit.disabled = true;
+      submit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in…';
+      message.textContent = "";
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+        if (!response.ok) {
+          const reason = await response.text();
+          throw new Error(reason === "invalid.credentials" ? "That username and password don’t match. Please try again." : reason || "Unable to sign in.");
+        }
+        const data = await response.json();
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("username", data.username);
+        const requested = new URLSearchParams(window.location.search).get("returnTo");
+        let destination = "/";
+        if (requested) {
+          const safeUrl = new URL(requested, window.location.origin);
+          if (safeUrl.origin === window.location.origin) destination = safeUrl.pathname + safeUrl.search + safeUrl.hash;
+        } else if (data.role === "ADMIN") {
+          destination = "/admin-claims.html";
+        }
+        window.location.assign(destination);
+      } catch (error) {
+        message.className = "message error";
+        message.textContent = error.message;
+      } finally {
+        submit.disabled = false;
+        submit.innerHTML = 'Sign in securely <i class="fa-solid fa-arrow-right"></i>';
+      }
+    });
+  </script>
+</body>
+</html>

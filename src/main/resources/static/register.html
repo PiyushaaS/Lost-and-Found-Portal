@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a13">
+  <title>Create account — Campus Find</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+  <header class="site-header"><nav class="nav-shell" aria-label="Main navigation">
+    <a class="brand" href="/"><span class="brand-mark"><i class="fa-solid fa-location-crosshairs"></i></span><span class="brand-name">Campus<span> Find</span></span></a>
+    <a class="btn btn-ghost btn-sm" href="/"><i class="fa-solid fa-arrow-left"></i> Back home</a>
+  </nav></header>
+  <main class="page-shell auth-shell">
+    <section class="auth-intro enter">
+      <span class="eyebrow">Join the community</span>
+      <h1>Small acts.<br><span class="gradient-text">Big reunions.</span></h1>
+      <p>Create an account to report lost belongings and keep track of claims as the campus team helps bring items home.</p>
+      <div class="auth-perks"><span><i class="fa-solid fa-circle-check"></i> Keep claim updates together</span><span><i class="fa-solid fa-circle-check"></i> Make trusted reports</span><span><i class="fa-solid fa-circle-check"></i> Be part of a more helpful campus</span></div>
+    </section>
+    <section class="surface auth-card enter-delay">
+      <span class="eyebrow">Get started</span>
+      <h2>Create your account</h2>
+      <p>It only takes a moment to join Campus Find.</p>
+      <form id="registerForm" class="auth-form">
+        <div class="field"><label for="fullName">Full name <span class="muted">(optional)</span></label><input class="control" id="fullName" name="fullName" autocomplete="name" placeholder="Your name"></div>
+        <div class="field"><label for="username">Username</label><input class="control" id="username" name="username" autocomplete="username" required placeholder="Choose a username"></div>
+        <div class="field"><label for="email">Email address</label><input class="control" id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com"></div>
+        <div class="field"><label for="password">Password</label><input class="control" id="password" name="password" type="password" autocomplete="new-password" required placeholder="Create a password"></div>
+        <div id="authMessage" aria-live="polite"></div>
+        <button class="btn btn-primary btn-block" id="registerSubmit" type="submit">Create account <i class="fa-solid fa-arrow-right"></i></button>
+      </form>
+      <p class="auth-switch">Already have an account? <a href="/login.html">Sign in</a></p>
+    </section>
+  </main>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="/js/portal.js"></script>
+  <script>
+    const form = document.getElementById("registerForm");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const submit = document.getElementById("registerSubmit");
+      const message = document.getElementById("authMessage");
+      const payload = Object.fromEntries(new FormData(form).entries());
+      submit.disabled = true;
+      submit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating account…';
+      message.textContent = "";
+      try {
+        const response = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          const reason = await response.text();
+          const friendly = reason === "username.exists" ? "That username is already in use." : reason === "email.exists" ? "An account with that email already exists." : reason || "Unable to create your account.";
+          throw new Error(friendly);
+        }
+        message.className = "message success";
+        message.textContent = "Your account is ready. Sign in to continue.";
+        form.reset();
+        window.setTimeout(() => window.location.assign("/login.html"), 1100);
+      } catch (error) {
+        message.className = "message error";
+        message.textContent = error.message;
+      } finally {
+        submit.disabled = false;
+        submit.innerHTML = 'Create account <i class="fa-solid fa-arrow-right"></i>';
+      }
+    });
+  </script>
+</body>
+</html>
